@@ -1,0 +1,29 @@
+name: Build APK
+on: [push, workflow_dispatch]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -q 'Cellhelper*'
+      - run: |
+          echo "android.useAndroidX=true" > Cellhelper/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx2g" >> Cellhelper/gradle.properties
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+      - run: cd Cellhelper && gradle assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: Cellhelper/app/build/outputs/apk/debug/app-debug.apk
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create v${{ github.run_number }} Cellhelper/app/build/outputs/apk/debug/app-debug.apk --title "Cellhelper ${{ github.run_number }}" --notes "Сборка ${{ github.run_number }}"
